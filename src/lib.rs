@@ -2,7 +2,7 @@ pub mod engine {
     use std::collections::LinkedList;
     use std::time::Duration;
 
-    use glm::{normalize, Vec2};
+    use glm::Vec2;
     use sdl2::event::Event;
     use sdl2::keyboard::Keycode;
     use sdl2::pixels::Color;
@@ -11,8 +11,15 @@ pub mod engine {
     use sdl2::Sdl;
 
     const WIDTH: u32 = 800;
-    const HEIGHT: u32 = 800;
+    const HEIGHT: u32 = WIDTH;
     const CELL_SIZE: u32 = 10;
+    const ROWS: u32 = HEIGHT / CELL_SIZE;
+    const COLUMNS: u32 = WIDTH / CELL_SIZE;
+    const INITIAL_FPS: i32 = 60;
+    const MIN_FPS: i32 = 1;
+    const MAX_FPS: i32 = 60;
+    const INITIAL_SNAKE_SIZE: u32 = ROWS;
+    const MOUSE_WHEEL_SENSITIVITY: i32 = 5;
 
     fn vec2rect(vec: &Vec2) -> Rect {
         let [x, y] = [vec.x as i32, vec.y as i32].map(|i| i * CELL_SIZE as i32);
@@ -37,17 +44,37 @@ pub mod engine {
             .unwrap()
     }
 
+    enum Direction {
+        Up,
+        Down,
+        Left,
+        Right,
+    }
+
+    impl Direction {
+        fn to_vec(&self) -> Vec2 {
+            match self {
+                Direction::Up => Vec2::new(0., -1.),
+                Direction::Down => Vec2::new(0., 1.),
+                Direction::Left => Vec2::new(-1., 0.),
+                Direction::Right => Vec2::new(1., 0.),
+            }
+        }
+    }
+
     struct Snake {
         body: LinkedList<Vec2>,
+        direction: Vec2,
     }
 
     impl Snake {
-        fn new(head: Vec2, direction: Vec2, initial_size: i32) -> Self {
-            let direction = normalize(direction);
+        fn new(origin: Vec2, direction: Direction, initial_size: i32) -> Self {
+            let direction = direction.to_vec();
             let body: LinkedList<_> = (0..initial_size)
-                .map(|i| head + (direction * i as f32))
+                .map(|i| origin + (direction * i as f32))
+                .rev()
                 .collect();
-            Self { body }
+            Self { body, direction }
         }
     }
 
@@ -62,14 +89,13 @@ pub mod engine {
         pub fn new() -> Self {
             let context = sdl2::init().unwrap();
             let canvas = get_canvas(&context);
-            let origin = Vec2::new(0., 0.);
-            let up = Vec2::new(0., 1.);
-            let snake = Snake::new(origin, up, 5);
+            let origin = Vec2::new((ROWS / 2) as f32, (COLUMNS / 2) as f32);
+            let snake = Snake::new(origin, Direction::Down, INITIAL_SNAKE_SIZE as i32);
             GameEngine {
                 context,
                 canvas,
                 snake,
-                fps: 24,
+                fps: INITIAL_FPS as u32,
             }
         }
 
@@ -86,15 +112,51 @@ pub mod engine {
             self.canvas.fill_rects(&snake_rects).unwrap();
         }
 
+        fn move_snake(&mut self) {
+            let head = self.snake.body.front().unwrap();
+            let mut parent_cell = *head + self.snake.direction;
+
+            if parent_cell.x >= COLUMNS as f32 {
+                parent_cell.x = 0.;
+            } else if parent_cell.x < 0. {
+                parent_cell.x = (COLUMNS - 1) as f32
+            }
+
+            if parent_cell.y >= ROWS as f32 {
+                parent_cell.y = 0.;
+            } else if parent_cell.y < 0. {
+                parent_cell.y = (ROWS - 1) as f32
+            }
+
+            for cell in self.snake.body.iter_mut() {
+                [*cell, parent_cell] = [parent_cell, *cell];
+            }
+        }
+
         fn handle_event(&mut self, event: Event) {
             if let Event::KeyDown { keycode, .. } = event {
-                let _direction = match keycode {
-                    Some(Keycode::Up) => Vec2::new(0., 1.),
-                    Some(Keycode::Down) => Vec2::new(0., -1.),
-                    Some(Keycode::Left) => Vec2::new(-1., 0.),
-                    Some(Keycode::Right) => Vec2::new(1., 0.),
-                    _ => Vec2::new(0., 0.),
-                };
+                self.handle_key_down_event(keycode)
+            }
+
+            if let Event::MouseWheel { y, .. } = event {
+                let offset = y * MOUSE_WHEEL_SENSITIVITY;
+                self.fps = (self.fps as i32 + offset).clamp(MIN_FPS, MAX_FPS) as u32;
+            }
+        }
+
+        fn handle_key_down_event(&mut self, keycode: Option<Keycode>) {
+            let new_direction = match keycode {
+                Some(Keycode::Up) => Vec2::new(0., -1.),
+                Some(Keycode::Down) => Vec2::new(0., 1.),
+                Some(Keycode::Left) => Vec2::new(-1., 0.),
+                Some(Keycode::Right) => Vec2::new(1., 0.),
+                _ => self.snake.direction,
+            };
+
+            let is_orthogonal = glm::dot(self.snake.direction, new_direction) == 0.0;
+
+            if is_orthogonal {
+                self.snake.direction = new_direction;
             }
         }
 
@@ -116,6 +178,8 @@ pub mod engine {
                         }
                     }
                 }
+
+                self.move_snake();
 
                 std::thread::sleep(Duration::from_millis((1000 / self.fps) as u64));
             }
