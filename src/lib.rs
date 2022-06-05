@@ -1,40 +1,19 @@
+mod utils;
+
 pub mod engine {
     use std::collections::LinkedList;
     use std::time::{Duration, Instant};
 
+    use crate::vec2;
     use glm::Vec2;
     use sdl2::event::Event;
     use sdl2::keyboard::Keycode;
     use sdl2::pixels::Color;
-    use sdl2::rect::Rect;
+    
     use sdl2::render::WindowCanvas;
     use sdl2::Sdl;
 
-    const WIDTH: u32 = 800;
-    const HEIGHT: u32 = WIDTH;
-    const CELL_SIZE: u32 = 10;
-    const ROWS: u32 = HEIGHT / CELL_SIZE;
-    const COLUMNS: u32 = WIDTH / CELL_SIZE;
-    const INITIAL_FPS: i32 = 60;
-    const MIN_FPS: i32 = 1;
-    const MAX_FPS: i32 = 60;
-    const INITIAL_SNAKE_SIZE: u32 = ROWS;
-    const MOUSE_WHEEL_SENSITIVITY: i32 = 5;
-
-    macro_rules! rect(
-        ($x:expr, $y:expr, $w:expr, $h:expr) => (
-            Rect::new($x as i32, $y as i32, $w as u32, $h as u32)
-        )
-    );
-
-    macro_rules! vec2(
-        ($x:expr, $y:expr) => (Vec2::new($x as f32, $y as f32))
-    );
-
-    fn vec2rect(vec: &Vec2) -> Rect {
-        let size = CELL_SIZE as f32;
-        rect!(vec.x * size, vec.y * size, CELL_SIZE, CELL_SIZE)
-    }
+    use super::utils::*;
 
     fn get_canvas(sdl_context: &Sdl) -> WindowCanvas {
         let video_subsystem = sdl_context.video().unwrap();
@@ -52,24 +31,6 @@ pub mod engine {
             .build()
             .map_err(|e| e.to_string())
             .unwrap()
-    }
-
-    enum Direction {
-        Up,
-        Down,
-        Left,
-        Right,
-    }
-
-    impl Direction {
-        fn to_vec(&self) -> Vec2 {
-            match self {
-                Direction::Up => vec2!(0, -1),
-                Direction::Down => vec2!(0, 1),
-                Direction::Left => vec2!(-1, 0),
-                Direction::Right => vec2!(1, 0),
-            }
-        }
     }
 
     struct Snake {
