@@ -1,6 +1,6 @@
 pub mod engine {
     use std::collections::LinkedList;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     use glm::Vec2;
     use sdl2::event::Event;
@@ -163,8 +163,14 @@ pub mod engine {
         pub fn run(&mut self) {
             let mut event_pump = self.context.event_pump().unwrap();
 
+            let mut start = Instant::now();
+
             'game_loop: loop {
-                self.redraw();
+                if start.elapsed().as_millis() >= (1000 / self.fps) as u128 {
+                    self.redraw();
+                    self.move_snake();
+                    start = Instant::now();
+                }
 
                 for event in event_pump.poll_iter() {
                     match event {
@@ -179,9 +185,7 @@ pub mod engine {
                     }
                 }
 
-                self.move_snake();
-
-                std::thread::sleep(Duration::from_millis((1000 / self.fps) as u64));
+                std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
             }
         }
     }
