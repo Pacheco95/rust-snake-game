@@ -1,4 +1,5 @@
-use glm::Vec2;
+use glm::{Vec2};
+
 
 use sdl2::rect::Rect;
 
@@ -7,10 +8,10 @@ pub const HEIGHT: u32 = WIDTH;
 pub const CELL_SIZE: u32 = 10;
 pub const ROWS: u32 = HEIGHT / CELL_SIZE;
 pub const COLUMNS: u32 = WIDTH / CELL_SIZE;
-pub const INITIAL_FPS: i32 = 60;
+pub const INITIAL_FPS: i32 = 40;
 pub const MIN_FPS: i32 = 1;
 pub const MAX_FPS: i32 = 60;
-pub const INITIAL_SNAKE_SIZE: u32 = ROWS;
+pub const INITIAL_SNAKE_SIZE: u32 = 3;
 pub const MOUSE_WHEEL_SENSITIVITY: i32 = 5;
 
 #[macro_export]
@@ -47,4 +48,10 @@ impl Direction {
             Direction::Right => vec2!(1, 0),
         }
     }
+}
+
+use num_traits::{Euclid, Num};
+
+pub fn clamp_round<T: Num + Euclid + Copy>(n: T, r: std::ops::Range<T>) -> T {
+    (n + r.start).rem_euclid(&(r.end - r.start)) + r.start
 }

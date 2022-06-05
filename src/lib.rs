@@ -4,14 +4,14 @@ pub mod engine {
     use std::collections::LinkedList;
     use std::time::{Duration, Instant};
 
-    use crate::vec2;
     use glm::Vec2;
     use sdl2::event::Event;
     use sdl2::keyboard::Keycode;
     use sdl2::pixels::Color;
-    
     use sdl2::render::WindowCanvas;
     use sdl2::Sdl;
+
+    use crate::vec2;
 
     use super::utils::*;
 
@@ -97,20 +97,11 @@ pub mod engine {
                 return;
             }
 
-            if parent_cell.x >= COLUMNS as f32 {
-                parent_cell.x = 0.;
-            } else if parent_cell.x < 0. {
-                parent_cell.x = (COLUMNS - 1) as f32
-            }
-
-            if parent_cell.y >= ROWS as f32 {
-                parent_cell.y = 0.;
-            } else if parent_cell.y < 0. {
-                parent_cell.y = (ROWS - 1) as f32
-            }
+            parent_cell.x = clamp_round(parent_cell.x, 0.0..COLUMNS as f32);
+            parent_cell.y = clamp_round(parent_cell.y, 0.0..ROWS as f32);
 
             for cell in self.snake.body.iter_mut() {
-                [*cell, parent_cell] = [parent_cell, *cell];
+                std::mem::swap(cell, &mut parent_cell);
             }
         }
 
