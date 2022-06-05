@@ -6,9 +6,10 @@ pub mod engine {
 
     use glm::Vec2;
     use sdl2::event::Event;
+    use sdl2::image::{InitFlag, LoadTexture};
     use sdl2::keyboard::Keycode;
     use sdl2::pixels::Color;
-    use sdl2::render::WindowCanvas;
+    use sdl2::render::{Texture, WindowCanvas};
     use sdl2::Sdl;
 
     use crate::vec2;
@@ -61,6 +62,9 @@ pub mod engine {
         pub fn new() -> Self {
             let context = sdl2::init().unwrap();
             let canvas = get_canvas(&context);
+
+            sdl2::image::init(InitFlag::WEBP).unwrap();
+
             let origin = vec2!(ROWS / 2, COLUMNS / 2);
             let snake = Snake::new(origin, Direction::Down, INITIAL_SNAKE_SIZE as i32);
 
@@ -73,10 +77,16 @@ pub mod engine {
             }
         }
 
-        fn redraw(&mut self) {
+        fn redraw(&mut self, game_over_texture: &Texture) {
             self.canvas.set_draw_color(Color::BLACK);
             self.canvas.clear();
-            self.render_snake();
+
+            if self.game_over {
+                self.canvas.copy(&game_over_texture, None, None).unwrap();
+            } else {
+                self.render_snake();
+            }
+
             self.canvas.present();
         }
 
@@ -135,11 +145,14 @@ pub mod engine {
         pub fn run(&mut self) {
             let mut event_pump = self.context.event_pump().unwrap();
 
+            let texture_creator = self.canvas.texture_creator();
+            let game_over_texture = texture_creator.load_texture("res/game-over.webp").unwrap();
+
             let mut start = Instant::now();
 
             'game_loop: loop {
                 if start.elapsed().as_millis() >= (1000 / self.fps) as u128 {
-                    self.redraw();
+                    self.redraw(&game_over_texture);
 
                     if !self.game_over {
                         self.move_snake();
