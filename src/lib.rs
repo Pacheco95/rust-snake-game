@@ -21,9 +21,19 @@ pub mod engine {
     const INITIAL_SNAKE_SIZE: u32 = ROWS;
     const MOUSE_WHEEL_SENSITIVITY: i32 = 5;
 
+    macro_rules! rect(
+        ($x:expr, $y:expr, $w:expr, $h:expr) => (
+            Rect::new($x as i32, $y as i32, $w as u32, $h as u32)
+        )
+    );
+
+    macro_rules! vec2(
+        ($x:expr, $y:expr) => (Vec2::new($x as f32, $y as f32))
+    );
+
     fn vec2rect(vec: &Vec2) -> Rect {
-        let [x, y] = [vec.x as i32, vec.y as i32].map(|i| i * CELL_SIZE as i32);
-        Rect::new(x, y, CELL_SIZE, CELL_SIZE)
+        let size = CELL_SIZE as f32;
+        rect!(vec.x * size, vec.y * size, CELL_SIZE, CELL_SIZE)
     }
 
     fn get_canvas(sdl_context: &Sdl) -> WindowCanvas {
@@ -54,10 +64,10 @@ pub mod engine {
     impl Direction {
         fn to_vec(&self) -> Vec2 {
             match self {
-                Direction::Up => Vec2::new(0., -1.),
-                Direction::Down => Vec2::new(0., 1.),
-                Direction::Left => Vec2::new(-1., 0.),
-                Direction::Right => Vec2::new(1., 0.),
+                Direction::Up => vec2!(0, -1),
+                Direction::Down => vec2!(0, 1),
+                Direction::Left => vec2!(-1, 0),
+                Direction::Right => vec2!(1, 0),
             }
         }
     }
@@ -83,19 +93,22 @@ pub mod engine {
         canvas: WindowCanvas,
         snake: Snake,
         fps: u32,
+        game_over: bool,
     }
 
     impl GameEngine {
         pub fn new() -> Self {
             let context = sdl2::init().unwrap();
             let canvas = get_canvas(&context);
-            let origin = Vec2::new((ROWS / 2) as f32, (COLUMNS / 2) as f32);
+            let origin = vec2!(ROWS / 2, COLUMNS / 2);
             let snake = Snake::new(origin, Direction::Down, INITIAL_SNAKE_SIZE as i32);
+
             GameEngine {
                 context,
                 canvas,
                 snake,
                 fps: INITIAL_FPS as u32,
+                game_over: false,
             }
         }
 
@@ -115,6 +128,13 @@ pub mod engine {
         fn move_snake(&mut self) {
             let head = self.snake.body.front().unwrap();
             let mut parent_cell = *head + self.snake.direction;
+
+            let collided = self.snake.body.contains(&parent_cell);
+
+            if collided {
+                self.game_over = true;
+                return;
+            }
 
             if parent_cell.x >= COLUMNS as f32 {
                 parent_cell.x = 0.;
@@ -146,10 +166,10 @@ pub mod engine {
 
         fn handle_key_down_event(&mut self, keycode: Option<Keycode>) {
             let new_direction = match keycode {
-                Some(Keycode::Up) => Vec2::new(0., -1.),
-                Some(Keycode::Down) => Vec2::new(0., 1.),
-                Some(Keycode::Left) => Vec2::new(-1., 0.),
-                Some(Keycode::Right) => Vec2::new(1., 0.),
+                Some(Keycode::Up) => vec2!(0., -1.),
+                Some(Keycode::Down) => vec2!(0., 1.),
+                Some(Keycode::Left) => vec2!(-1., 0.),
+                Some(Keycode::Right) => vec2!(1., 0.),
                 _ => self.snake.direction,
             };
 
@@ -168,7 +188,11 @@ pub mod engine {
             'game_loop: loop {
                 if start.elapsed().as_millis() >= (1000 / self.fps) as u128 {
                     self.redraw();
-                    self.move_snake();
+
+                    if !self.game_over {
+                        self.move_snake();
+                    }
+
                     start = Instant::now();
                 }
 
