@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 glm = "0.2.3"
 num-traits = "0.2.15"
+konst = "0.2.13"
 
 [dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
