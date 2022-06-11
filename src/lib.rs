@@ -19,7 +19,7 @@ pub mod engine {
 
     use super::utils::*;
 
-    fn get_canvas(sdl_context: &Sdl) -> WindowCanvas {
+    fn create_canvas(sdl_context: &Sdl) -> WindowCanvas {
         let video_subsystem = sdl_context.video().unwrap();
 
         let window = video_subsystem
@@ -53,19 +53,19 @@ pub mod engine {
         }
     }
 
-    pub struct GameEngine {
+    pub struct GameEngine<'a> {
         context: Sdl,
         canvas: WindowCanvas,
         snake: Snake,
         fps: u32,
         game_over: bool,
-        texture_manager: TextureManager,
+        texture_manager: TextureManager<'a>,
     }
 
-    impl GameEngine {
+    impl<'a> GameEngine<'a> {
         pub fn new() -> Self {
             let context = sdl2::init().unwrap();
-            let canvas = get_canvas(&context);
+            let canvas = create_canvas(&context);
 
             sdl2::image::init(InitFlag::WEBP).unwrap();
 
