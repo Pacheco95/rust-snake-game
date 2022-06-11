@@ -13,4 +13,4 @@ konst = "0.2.13"
 [dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"
 default-features = false
-features = ["image"]
+features = ["image", "unsafe_textures"]

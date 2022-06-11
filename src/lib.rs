@@ -1,17 +1,20 @@
+mod texture_manager;
 mod utils;
 
 pub mod engine {
     use std::collections::LinkedList;
+    use std::rc::Rc;
     use std::time::{Duration, Instant};
 
     use glm::Vec2;
     use sdl2::event::Event;
-    use sdl2::image::{InitFlag, LoadTexture};
+    use sdl2::image::InitFlag;
     use sdl2::keyboard::Keycode;
     use sdl2::pixels::Color;
-    use sdl2::render::{Texture, WindowCanvas};
+    use sdl2::render::WindowCanvas;
     use sdl2::Sdl;
 
+    use crate::texture_manager::TextureManager;
     use crate::vec2;
 
     use super::utils::*;
@@ -56,6 +59,7 @@ pub mod engine {
         snake: Snake,
         fps: u32,
         game_over: bool,
+        texture_manager: TextureManager,
     }
 
     impl GameEngine {
@@ -68,20 +72,25 @@ pub mod engine {
             let origin = vec2!(ROWS / 2, COLUMNS / 2);
             let snake = Snake::new(origin, Direction::Down, INITIAL_SNAKE_SIZE as i32);
 
+            let texture_creator = Rc::new(canvas.texture_creator());
+            let texture_manager = TextureManager::new(texture_creator);
+
             GameEngine {
                 context,
                 canvas,
                 snake,
                 fps: INITIAL_FPS as u32,
                 game_over: false,
+                texture_manager,
             }
         }
 
-        fn redraw(&mut self, game_over_texture: &Texture) {
+        fn redraw(&mut self) {
             self.canvas.set_draw_color(Color::BLACK);
             self.canvas.clear();
 
             if self.game_over {
+                let game_over_texture = self.texture_manager.load("res/game-over.webp").unwrap();
                 self.canvas.copy(&game_over_texture, None, None).unwrap();
             } else {
                 self.render_snake();
@@ -144,15 +153,11 @@ pub mod engine {
 
         pub fn run(&mut self) {
             let mut event_pump = self.context.event_pump().unwrap();
-
-            let texture_creator = self.canvas.texture_creator();
-            let game_over_texture = texture_creator.load_texture("res/game-over.webp").unwrap();
-
             let mut start = Instant::now();
 
             'game_loop: loop {
                 if start.elapsed().as_millis() >= (1000 / self.fps) as u128 {
-                    self.redraw(&game_over_texture);
+                    self.redraw();
 
                     if !self.game_over {
                         self.move_snake();
