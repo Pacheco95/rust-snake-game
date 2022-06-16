@@ -37,29 +37,63 @@ pub mod engine {
             .unwrap()
     }
 
+    trait Render {
+        fn render(&mut self, canvas: &mut WindowCanvas);
+    }
+
+    trait Move {
+        fn move_to(&mut self, direction: Direction);
+    }
+
+    trait GameObject: Render + Move {}
+
     struct Snake {
         body: LinkedList<Vec2>,
-        direction: Vec2,
     }
 
     impl Snake {
         fn new(origin: Vec2, direction: Direction, initial_size: i32) -> Self {
-            let direction = direction.to_vec();
+            let direction = Vec2::from(direction);
             let body: LinkedList<_> = (0..initial_size)
                 .map(|i| origin + (direction * i as f32))
                 .rev()
                 .collect();
-            Self { body, direction }
+            Self { body }
         }
     }
+
+    impl Render for Snake {
+        fn render(&mut self, canvas: &mut WindowCanvas) {
+            canvas.set_draw_color(Color::RED);
+            let snake_rects: Vec<_> = self.body.iter().map(vec2rect).collect();
+            canvas.fill_rects(&snake_rects).unwrap();
+        }
+    }
+
+    impl Move for Snake {
+        fn move_to(&mut self, direction: Direction) {
+            let head = self.body.front().unwrap();
+            let mut parent_cell = *head + direction;
+
+            parent_cell.x = clamp_round(parent_cell.x, 0.0..COLUMNS as f32);
+            parent_cell.y = clamp_round(parent_cell.y, 0.0..ROWS as f32);
+
+            for cell in self.body.iter_mut() {
+                std::mem::swap(cell, &mut parent_cell);
+            }
+        }
+    }
+
+    impl GameObject for Snake {}
 
     pub struct GameEngine<'a> {
         context: Sdl,
         canvas: WindowCanvas,
-        snake: Snake,
+        game_objects: Vec<Box<dyn GameObject>>,
         fps: u32,
         game_over: bool,
         texture_manager: TextureManager<'a>,
+        direction: Direction,
     }
 
     impl<'a> GameEngine<'a> {
@@ -69,19 +103,23 @@ pub mod engine {
 
             sdl2::image::init(InitFlag::WEBP).unwrap();
 
-            let origin = vec2!(ROWS / 2, COLUMNS / 2);
-            let snake = Snake::new(origin, Direction::Down, INITIAL_SNAKE_SIZE as i32);
+            let center = vec2!(ROWS / 2, COLUMNS / 2);
+            let direction = Direction::Down;
+            let snake = Snake::new(center, direction, INITIAL_SNAKE_SIZE as i32);
 
             let texture_creator = Rc::new(canvas.texture_creator());
             let texture_manager = TextureManager::new(texture_creator);
 
+            let game_objects: Vec<Box<dyn GameObject>> = vec![Box::new(snake)];
+
             GameEngine {
                 context,
                 canvas,
-                snake,
+                game_objects,
                 fps: INITIAL_FPS as u32,
                 game_over: false,
                 texture_manager,
+                direction,
             }
         }
 
@@ -93,35 +131,12 @@ pub mod engine {
                 let game_over_texture = self.texture_manager.load("res/game-over.webp").unwrap();
                 self.canvas.copy(&game_over_texture, None, None).unwrap();
             } else {
-                self.render_snake();
+                self.game_objects
+                    .iter_mut()
+                    .for_each(|game_obj| game_obj.render(&mut self.canvas))
             }
 
             self.canvas.present();
-        }
-
-        fn render_snake(&mut self) {
-            self.canvas.set_draw_color(Color::RED);
-            let snake_rects: Vec<_> = self.snake.body.iter().map(vec2rect).collect();
-            self.canvas.fill_rects(&snake_rects).unwrap();
-        }
-
-        fn move_snake(&mut self) {
-            let head = self.snake.body.front().unwrap();
-            let mut parent_cell = *head + self.snake.direction;
-
-            let collided = self.snake.body.contains(&parent_cell);
-
-            if collided {
-                self.game_over = true;
-                return;
-            }
-
-            parent_cell.x = clamp_round(parent_cell.x, 0.0..COLUMNS as f32);
-            parent_cell.y = clamp_round(parent_cell.y, 0.0..ROWS as f32);
-
-            for cell in self.snake.body.iter_mut() {
-                std::mem::swap(cell, &mut parent_cell);
-            }
         }
 
         fn handle_event(&mut self, event: Event) {
@@ -141,13 +156,13 @@ pub mod engine {
                 Some(Keycode::Down) => vec2!(0., 1.),
                 Some(Keycode::Left) => vec2!(-1., 0.),
                 Some(Keycode::Right) => vec2!(1., 0.),
-                _ => self.snake.direction,
+                _ => self.direction.into(),
             };
 
-            let is_orthogonal = glm::dot(self.snake.direction, new_direction) == 0.0;
+            let is_orthogonal = glm::dot(self.direction.into(), new_direction) == 0.0;
 
             if is_orthogonal {
-                self.snake.direction = new_direction;
+                self.direction = new_direction.into();
             }
         }
 
@@ -160,7 +175,9 @@ pub mod engine {
                     self.redraw();
 
                     if !self.game_over {
-                        self.move_snake();
+                        self.game_objects
+                            .iter_mut()
+                            .for_each(|o| o.move_to(self.direction));
                     }
 
                     start = Instant::now();

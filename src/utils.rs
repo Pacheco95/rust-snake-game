@@ -1,7 +1,7 @@
 use glm::Vec2;
 use konst::primitive::{parse_i32, parse_u32};
 use konst::unwrap_ctx;
-
+use num_traits::{Euclid, Num};
 use sdl2::rect::Rect;
 
 pub const WIDTH: u32 = unwrap_ctx!(parse_u32(env!("WIDTH")));
@@ -33,6 +33,7 @@ pub fn vec2rect(vec: &Vec2) -> Rect {
 }
 
 #[allow(dead_code)]
+#[derive(Copy, Clone)]
 pub enum Direction {
     Up,
     Down,
@@ -40,9 +41,9 @@ pub enum Direction {
     Right,
 }
 
-impl Direction {
-    pub fn to_vec(&self) -> Vec2 {
-        match self {
+impl From<Direction> for Vec2 {
+    fn from(direction: Direction) -> Self {
+        match direction {
             Direction::Up => vec2!(0, -1),
             Direction::Down => vec2!(0, 1),
             Direction::Left => vec2!(-1, 0),
@@ -51,7 +52,28 @@ impl Direction {
     }
 }
 
-use num_traits::{Euclid, Num};
+impl From<Vec2> for Direction {
+    fn from(v: Vec2) -> Self {
+        let Vec2 { x, y } = v;
+        let (x, y) = (x as i32, y as i32);
+
+        match (x, y) {
+            (0, -1) => Direction::Up,
+            (0, 1) => Direction::Down,
+            (-1, 0) => Direction::Left,
+            (1, 0) => Direction::Right,
+            (..) => Direction::Up,
+        }
+    }
+}
+
+impl std::ops::Add<Direction> for Vec2 {
+    type Output = Vec2;
+
+    fn add(self, rhs: Direction) -> Self::Output {
+        self + Vec2::from(rhs)
+    }
+}
 
 pub fn clamp_round<T: Num + Euclid + Copy>(n: T, r: std::ops::Range<T>) -> T {
     (n + r.start).rem_euclid(&(r.end - r.start)) + r.start
