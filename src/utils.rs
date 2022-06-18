@@ -1,24 +1,21 @@
 use glm::Vec2;
-use konst::primitive::{parse_i32, parse_u32};
-use konst::unwrap_ctx;
 use num_traits::{Euclid, Num};
-use sdl2::rect::Rect;
 
-pub const WIDTH: u32 = unwrap_ctx!(parse_u32(env!("WIDTH")));
-pub const HEIGHT: u32 = WIDTH;
-pub const CELL_SIZE: u32 = unwrap_ctx!(parse_u32(env!("CELL_SIZE")));
+pub const CELL_SIZE: u32 = 10;
+pub const WIDTH: u32 = 800;
+pub const HEIGHT: u32 = 800;
 pub const ROWS: u32 = HEIGHT / CELL_SIZE;
 pub const COLUMNS: u32 = WIDTH / CELL_SIZE;
-pub const INITIAL_FPS: i32 = unwrap_ctx!(parse_i32(env!("INITIAL_FPS")));
-pub const MIN_FPS: i32 = unwrap_ctx!(parse_i32(env!("MIN_FPS")));
-pub const MAX_FPS: i32 = unwrap_ctx!(parse_i32(env!("MAX_FPS")));
-pub const INITIAL_SNAKE_SIZE: u32 = unwrap_ctx!(parse_u32(env!("INITIAL_SNAKE_SIZE")));
-pub const MOUSE_WHEEL_SENSITIVITY: i32 = unwrap_ctx!(parse_i32(env!("MOUSE_WHEEL_SENSITIVITY")));
+pub const INITIAL_FPS: i32 = 40;
+pub const INITIAL_SNAKE_SIZE: u32 = 20;
+pub const MAX_FPS: i32 = 60;
+pub const MIN_FPS: i32 = 5;
+pub const MOUSE_WHEEL_SENSITIVITY: i32 = 5;
 
 #[macro_export]
 macro_rules! rect(
-    ($x:expr, $y:expr, $w:expr, $h:expr) => (
-        Rect::new($x as i32, $y as i32, $w as u32, $h as u32)
+    ($x:expr, $y:expr) => (
+        Rect::new($x as i32 * CELL_SIZE as i32, $y as i32 * CELL_SIZE as i32, CELL_SIZE, CELL_SIZE)
     )
 );
 
@@ -26,11 +23,6 @@ macro_rules! rect(
 macro_rules! vec2(
     ($x:expr, $y:expr) => (Vec2::new($x as f32, $y as f32))
 );
-
-pub fn vec2rect(vec: &Vec2) -> Rect {
-    let size = CELL_SIZE as f32;
-    rect!(vec.x * size, vec.y * size, CELL_SIZE, CELL_SIZE)
-}
 
 #[allow(dead_code)]
 #[derive(Copy, Clone)]
