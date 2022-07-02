@@ -7,7 +7,6 @@ pub mod engine {
 
     use std::collections::{HashMap, LinkedList};
     use std::fmt::Debug;
-    use std::hash::{Hash, Hasher};
     use std::ops::Deref;
     use std::rc::Rc;
     use std::time::{Duration, Instant};
@@ -53,40 +52,10 @@ pub mod engine {
         Obstacle,
     }
 
-    #[derive(Debug, PartialEq, Copy, Clone)]
-    struct Coord(f32, f32);
-
-    impl Hash for Coord {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            (self.0 as i32).hash(state);
-            (self.1 as i32).hash(state);
-        }
-    }
-
-    impl Eq for Coord {}
-
-    impl From<&Coord> for Rect {
-        fn from(&Coord(x, y): &Coord) -> Rect {
-            rect!(x, y)
-        }
-    }
-
-    impl From<&Coord> for Vec2 {
-        fn from(&Coord(x, y): &Coord) -> Vec2 {
-            Vec2::new(x, y)
-        }
-    }
-
-    impl From<&Vec2> for Coord {
-        fn from(&Vec2 { x, y }: &Vec2) -> Coord {
-            Coord(x, y)
-        }
-    }
-
     trait GameObject: Debug {
         fn render(&mut self, canvas: &mut WindowCanvas);
         fn move_to(&mut self, direction: Direction);
-        fn get_body(&self) -> Box<dyn Iterator<Item = &Coord> + '_>;
+        fn get_body(&self) -> Box<dyn Iterator<Item = &Vec2> + '_>;
         fn get_entity(&self) -> Entity;
         fn get_id(&self) -> Uuid;
     }
@@ -94,7 +63,7 @@ pub mod engine {
     #[derive(Debug)]
     struct Snake {
         id: Uuid,
-        body: LinkedList<Coord>,
+        body: LinkedList<Vec2>,
     }
 
     impl Snake {
@@ -105,7 +74,6 @@ pub mod engine {
                 id: Uuid::new_v4(),
                 body: (0..initial_size)
                     .map(|i| origin + (direction * i as f32))
-                    .map(|Vec2 { x, y }| Coord(x, y))
                     .rev()
                     .collect(),
             }
@@ -114,7 +82,8 @@ pub mod engine {
 
     impl GameObject for Snake {
         fn render(&mut self, canvas: &mut WindowCanvas) {
-            let snake_rects: Vec<Rect> = self.body.iter().map(Rect::from).collect();
+            let snake_rects: Vec<Rect> =
+                self.body.iter().map(|vec2| rect!(vec2.x, vec2.y)).collect();
             let (head, tail) = snake_rects.split_first().unwrap();
             canvas.set_draw_color(Color::WHITE);
             canvas.fill_rect(*head).unwrap();
@@ -124,20 +93,18 @@ pub mod engine {
 
         fn move_to(&mut self, direction: Direction) {
             let head = self.body.front().unwrap();
-            let head = Vec2::from(head);
+            let head = Vec2::new(head.x, head.y);
             let mut parent_coord = head + direction;
 
             parent_coord.x = clamp_round(parent_coord.x, 0.0..COLUMNS as f32);
             parent_coord.y = clamp_round(parent_coord.y, 0.0..ROWS as f32);
-
-            let mut parent_coord = Coord::from(&parent_coord);
 
             self.body
                 .iter_mut()
                 .for_each(|coord| std::mem::swap(coord, &mut parent_coord));
         }
 
-        fn get_body(&self) -> Box<dyn Iterator<Item = &Coord> + '_> {
+        fn get_body(&self) -> Box<dyn Iterator<Item = &Vec2> + '_> {
             Box::new(self.body.iter())
         }
 
@@ -327,8 +294,7 @@ pub mod engine {
 
             let head = player.borrow_mut().get_body().next().unwrap().clone();
 
-            let next_head = Vec2::new(head.0, head.1) + Vec2::from(self.direction);
-            let next_head = Coord(next_head.x, next_head.y);
+            let next_head = Vec2::new(head.x, head.y) + Vec2::from(self.direction);
 
             let will_collide = player
                 .borrow_mut()
