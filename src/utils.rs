@@ -46,15 +46,16 @@ impl From<Direction> for Vec2 {
 
 impl From<Vec2> for Direction {
     fn from(v: Vec2) -> Self {
-        let Vec2 { x, y } = v;
-        let (x, y) = (x as i32, y as i32);
+        let (x, y) = (v.x as i32, v.y as i32);
 
         match (x, y) {
             (0, -1) => Direction::Up,
             (0, 1) => Direction::Down,
             (-1, 0) => Direction::Left,
             (1, 0) => Direction::Right,
-            (..) => Direction::Up,
+            (..) => {
+                panic!("Invalid direction vector {:?}", v)
+            }
         }
     }
 }
