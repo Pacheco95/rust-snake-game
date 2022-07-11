@@ -11,7 +11,6 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
-use uuid::Uuid;
 
 use crate::direction::Direction;
 use crate::entity::Entity;
@@ -64,9 +63,10 @@ impl<'a> GameEngine<'a> {
         let center = vec2!(ROWS / 2, COLUMNS / 2);
         let snake = RefCell::new(Snake::new(center, direction, INITIAL_SNAKE_SIZE as i32));
 
-        let grid = Grid::new();
+        let mut grid = Grid::new();
+        grid.add_game_object(Rc::new(snake));
 
-        let mut engine = GameEngine {
+        GameEngine {
             context,
             canvas,
             fps: INITIAL_FPS as u32,
@@ -74,41 +74,6 @@ impl<'a> GameEngine<'a> {
             texture_manager,
             direction,
             grid,
-        };
-
-        engine.add_game_object(Rc::new(snake));
-
-        engine
-    }
-
-    fn add_game_object(&mut self, obj_ref: GameObjectRefMut) {
-        let obj = obj_ref.deref().borrow();
-        let obj_id = obj.get_id();
-
-        for (_, o) in self.grid.0.iter() {
-            if obj_id == o.deref().borrow().get_id() {
-                let msg = format!(
-                    "Attempt to add duplicated game objects in scene: {}({:?})",
-                    obj_id,
-                    obj.get_entity()
-                );
-                panic!("{}", msg)
-            }
-        }
-
-        self.grid.0.insert(obj_id, obj_ref.clone());
-    }
-
-    fn remove_game_object_by_id(&mut self, uuid_to_remove: &Uuid) -> Option<GameObjectRefMut> {
-        match self.grid.0.remove(uuid_to_remove) {
-            None => None,
-            Some(game_obj_to_remove) => {
-                self.grid.0.retain(|_, obj| {
-                    let obj_id = (*obj).deref().borrow().get_id();
-                    *uuid_to_remove != obj_id
-                });
-                Some(game_obj_to_remove)
-            }
         }
     }
 
@@ -203,7 +168,7 @@ impl<'a> GameEngine<'a> {
             player.get_id().clone()
         };
 
-        let player = self.remove_game_object_by_id(&player_id).unwrap();
+        let player = self.grid.remove_game_object_by_id(&player_id).unwrap();
 
         let head = player.borrow_mut().get_body().next().unwrap().clone();
 
@@ -219,6 +184,6 @@ impl<'a> GameEngine<'a> {
         }
 
         player.borrow_mut().move_to(self.direction);
-        self.add_game_object(player);
+        self.grid.add_game_object(player);
     }
 }
